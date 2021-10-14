@@ -5,11 +5,6 @@ use App\Services\UserService;
 use App\Models\LoginToken;
 use Illuminate\Http\Request;
 use App\Models\User;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
-use Illuminate\Http\Client\ResponseSequence;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
-use Laravel\Sanctum\PersonalAccessToken;
 
 class AuthController extends Controller
 {
@@ -34,8 +29,6 @@ class AuthController extends Controller
             'password' => bcrypt('password')
         ]);
 
-        //$token = $user->createToken('vacaytoken')->plainTextToken;
-
         if(!$user) {
             
             $response = [
@@ -55,7 +48,7 @@ class AuthController extends Controller
         return response($response, 201);            
     }
 
-    // Verify Login Verifies the link clicked in the email
+    // Verifies the token in the link clicked in the email on the portal front end
     public function verifyLogin(Request $request) {
 
         // Check if token exists
@@ -106,41 +99,25 @@ class AuthController extends Controller
         
         // Consume the link to make it unusable in the future
         $token->consume();
-        // Return the token
         
-        // $token->consumed_at = now();
-        // $token->save();
         $response = [
             'error'=>false,
             'loginSuccess'=>true,
-            'isConsumed'=>$token->isConsumed(),
-            'isExpired'=>$token->isExpired(),
-            'isValid'=>$token->isValid(),
             'user'=>$token->user,
             'token'=>$authtoken,
         ];
 
-        //session()->flash('success', true);
-
-        return response($response);
+        return response($response,201);
         
     }
 
     public function login(Request $request) {
         $data = $request->validate([
             'email' => ['required', 'email','exists:users,email']
-        ]);
+        ]);      
 
-        // Check if user exists
-        //$user = User::where('email','=',$data['email'])->first();
-        //$users = DB::table('users')->where('email', $data['email'])->get();
-        
+        $user = $this->userService->email($data['email']);
 
-            $user = $this->userService->email($data['email']);
-
-            //return $user;
-
-        // if user is not found
         if(!$user) {
             return response([
                 'loginSuccess'=>false,
@@ -148,27 +125,9 @@ class AuthController extends Controller
             ], 401);
         }
 
-        // // Send a login link to them
+        // Send a login link to them
         return response($user->sendLoginLink(),201);
 
-        // Send a JSON response to ask them to check mail
-
-        // $token = $user1->createToken('vacaytoken')->plainTextToken;
-        
-        // $personalAccessToken = PersonalAccessToken::findToken($request->token);
-        // $user = $personalAccessToken->tokenable;
-        // auth()->login($user);
-        // $username = auth()->user()->name; 
-
-        // session()->flash('success', true);
-
-        // return response()->json([
-        //     'personalAccessToken'=>$personalAccessToken,
-        //     'user'=>$user,
-        //     'username'=>$username,
-        //     'loginSuccess'=>true,
-        //     'message'=>'Please check email for login link'
-        // ]);
     }
 
     // Logout the user
@@ -179,25 +138,5 @@ class AuthController extends Controller
         return response()->json([
             'message'=>'Signed Out',
         ]);
-    }
-    
-    public function updateProfile(Request $request) {
-        
-        // Validate the data
-        $validatedData = $request->validate([
-            'email'=> 'required|string|email|unique:users,email|max:255',
-        ]);
-
-        // Update the profile data
-        // $user = UserDB::update(`update users set email = $validatedData['email'] where name = ?`, ['John']);([
-        //     'email'=> $validatedData['email'],
-        // ]);
-
-        $token = $user->createToken('auth_token')->plainTextToken;
-
-        return response()->json([
-            'access_token' => $token,
-            'token_type' => 'Bearer',
-        ]);        
     }
 }
